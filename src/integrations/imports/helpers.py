@@ -517,6 +517,19 @@ def bulk_create_media(bulk_media_list, user, *, backfill_completed=True):
                 "Updating references for episodes to existing TV seasons",
             )
             update_episode_references(bulk_media, user)
+            # Drop episodes whose parent season is missing in the DB.
+            # Without this filter, bulk_create hits NOT NULL on
+            # related_season_id and aborts the whole import.
+            valid = [e for e in bulk_media if e.related_season_id is not None]
+            skipped = len(bulk_media) - len(valid)
+            if skipped:
+                logger.warning(
+                    "Skipping %d episode(s) with no parent season in DB",
+                    skipped,
+                )
+            bulk_media = valid
+            if not bulk_media:
+                continue
         elif media_type == MediaTypes.PODCAST.value:
             logger.info("Updating references for podcasts to existing episodes")
             update_podcast_references(bulk_media)

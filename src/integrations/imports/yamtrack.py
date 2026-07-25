@@ -639,13 +639,29 @@ class YamtrackImporter:
             return
 
         if row.get("media_id", "") != "":
-            metadata = services.get_media_metadata(
-                media_type,
-                row["media_id"],
-                row["source"],
-                [season_number],
-                episode_number,
-            )
+            try:
+                metadata = services.get_media_metadata(
+                    media_type,
+                    row["media_id"],
+                    row["source"],
+                    [season_number],
+                    episode_number,
+                )
+            except services.ProviderAPIError as exc:
+                # Provider returned an error (e.g. TVDB 404 on a season that
+                # doesn't exist for this show). Continue with empty metadata
+                # so the row can still be imported; the Item is still created
+                # and a subsequent metadata backfill can populate it later.
+                logger.warning(
+                    "Could not fetch metadata for %s %s S%s E%s: %s. "
+                    "Continuing with empty title/image.",
+                    media_type,
+                    row["media_id"],
+                    season_number or "",
+                    episode_number or "",
+                    exc,
+                )
+                return
             row["title"] = metadata["title"]
             row["image"] = metadata["image"]
             return
@@ -655,12 +671,22 @@ class YamtrackImporter:
             if source == "":
                 source = config.get_default_source_name(media_type).value
 
-            metadata = services.search(
-                media_type,
-                row["title"],
-                1,
-                source,
-            )
+            try:
+                metadata = services.search(
+                    media_type,
+                    row["title"],
+                    1,
+                    source,
+                )
+            except services.ProviderAPIError as exc:
+                logger.warning(
+                    "Could not search metadata for %s %r: %s. "
+                    "Continuing with empty title/image.",
+                    media_type,
+                    row["title"],
+                    exc,
+                )
+                return
 
             first_result = metadata["results"][0]
             row["title"] = first_result["title"]

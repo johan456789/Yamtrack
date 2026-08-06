@@ -1,0 +1,12 @@
+services:
+  floppy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: floppy:myfork
+    environment:
+      - TZ=${TIMEZONE:-Europe/Berlin}
+      - SECRET=${SECRET:-longstring}
+    env_file: .env
+    ports:
+      - "${PORT}:8000"

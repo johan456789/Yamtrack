@@ -496,6 +496,62 @@ class MediaDetailsViewTests(TestCase):
         self.assertEqual(response.context["current_instance"], tv)
 
     @patch("app.providers.services.get_media_metadata")
+    def test_season_details_renders_when_provider_season_has_no_episode_count(
+        self,
+        mock_get_metadata,
+    ):
+        """A provider season without max_progress renders 0 Episodes, not 500."""
+        mock_get_metadata.return_value = {
+            "media_id": "335245",
+            "source": Sources.TVDB.value,
+            "media_type": MediaTypes.TV.value,
+            "title": "Partial Show",
+            "image": "",
+            "synopsis": "",
+            "genres": [],
+            "related": {
+                "seasons": [
+                    {
+                        "source": Sources.TVDB.value,
+                        "media_type": MediaTypes.SEASON.value,
+                        "media_id": "335245",
+                        "title": "Partial Show",
+                        "season_title": "Season 1",
+                        "season_number": 1,
+                        "image": "",
+                        "max_progress": None,
+                        "first_air_date": None,
+                    },
+                ],
+            },
+            "season/1": {
+                "media_id": "335245",
+                "source": Sources.TVDB.value,
+                "media_type": MediaTypes.SEASON.value,
+                "title": "Partial Show",
+                "season_title": "Season 1",
+                "season_number": 1,
+                "image": "",
+                "episodes": [],
+            },
+        }
+
+        response = self.client.get(
+            reverse(
+                "season_details",
+                kwargs={
+                    "source": Sources.TVDB.value,
+                    "media_id": "335245",
+                    "title": "partial-show",
+                    "season_number": 1,
+                },
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "0 Episodes")
+
+    @patch("app.providers.services.get_media_metadata")
     def test_media_details_keeps_source_link_when_provider_is_unreachable(
         self,
         mock_get_metadata,
